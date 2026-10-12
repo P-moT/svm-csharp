@@ -18,13 +18,13 @@ namespace ServerValueModifier
         // Tuning knobs - InStockChance is 0..1, quantities are inclusive.
         public record StockRule(double InStockChance, int Min, int Max);
 
-        public static readonly StockRule Ammo = new(0.30, 10, 80); // Loose rounds
-        public static readonly StockRule AmmoBox = new(0.25, 1, 2);
-        public static readonly StockRule Gear = new(0.20, 1, 2);   // Weapons, armor, plates, helmets, rigs, backpacks, weapon mods
-        public static readonly StockRule Other = new(0.30, 1, 2);  // Meds, provisions, barter items, keys, containers, etc.
+        public static readonly StockRule Ammo = new(0.30, 10, 90); // Loose rounds
+        public static readonly StockRule AmmoBox = new(0.30, 1, 1);
+        public static readonly StockRule Gear = new(0.25, 1, 1);   // Weapons, armor, plates, helmets, rigs, backpacks, weapon mods
+        public static readonly StockRule Other = new(0.35, 1, 1);  // Meds, provisions, barter items, keys, containers, etc.
 
         // Boon - chance an in-stock LL2+ offer is sold one loyalty level lower for this restock.
-        public static double LoyaltyBumpChance = 0.05;
+        public static double LoyaltyBumpChance = 0.1;
 
         // Print a summary to the server console on every roll (startup + each restock).
         public static bool LogRolls = true;
