@@ -6,7 +6,7 @@ Download the archive from releases, unpack it in folder where your game executab
 Run Greed.exe to configure your settings, manual is included inside the app.
 
 ### Uninstall:
-Delete Greed.exe, delete [SVM] ServerValueModifier folder in SPT/user/mods
+Delete Greed.exe, delete [SVM] ServerValueModifier folder in SPT_Runtime/user/mods
 If you utilised CSM plugin - delete HideSpecialIcon.dll from BepInEx/Plugins
 
 ### Compiling:
