@@ -8,6 +8,7 @@ using SPTarkov.Server.Core.Callbacks;
 using SPTarkov.Server.Core.Controllers;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Helpers.Items;
 using SPTarkov.Server.Core.Helpers.Profile;
 using SPTarkov.Server.Core.Helpers.Server;
 using SPTarkov.Server.Core.Helpers.Traders;
@@ -34,46 +35,39 @@ namespace ServerValueModifier.HarmonyOverrides
     [Injectable]
     public class TraderPatch : AbstractPatch
     {
-        private static ModHelper modhelper;
-        private static TradersTable traders;
-        public static TraderAssortHelper assortHelper;
+        private static ModHelper _modhelper;
+        private static TemplateTable _templateTable;
+        private static ISptLogger<SVM> _logger;
+        private static ItemHelper _itemHelper;
+
+        public TraderPatch(ModHelper modHelper, TemplateTable templateTable, ISptLogger<SVM> logger, ItemHelper itemHelper)
+        {
+            _modhelper = modHelper;
+            _templateTable = templateTable;
+            _logger = logger;
+            _itemHelper = itemHelper;
+        }
 
         protected override MethodBase GetTargetMethod()
         {
             return typeof(TraderAssortHelper).GetMethod(nameof(TraderAssortHelper.ResetExpiredTrader))!;
         }
-        [PatchPrefix]
-        public static bool Prefix(Trader trader)
+        [PatchPostfix]
+        public static void Postfix(Trader trader)
         {
-            try//I really hope it won't override existing trader assort and only take an effect of the one active, maybe find a way to select the one with passed timer?
+            //Postfix, because ResetExpiredTrader replaces trader.Assort.Items with a pristine copy - anything done before that is lost.
+            try
             {
-                MainClass.MainConfig svmcfg = new SVMConfig(modhelper).CallConfig();
+                MainClass.MainConfig svmcfg = new SVMConfig(_modhelper).CallConfig();
                 if (svmcfg.Traders.EnableTraders && svmcfg.Traders.RandomizeAssort)
                 {
-                    Random rnd = new();
-                    foreach (var scheme in trader.Assort.BarterScheme)
-                    {
-                        var barter = scheme.Value[0][0].Template;
-                        if (trader.Base.Id != TraderID.LIGHTHOUSEKEEPER && trader.Base.Id != TraderID.FENCE && trader.Assort is not null)//excessive check?
-                        {
-                            foreach (Item elem in trader.Assort.Items)
-                            {
-                                if (elem.Id == scheme.Key)
-                                {
-                                    elem.Upd.UnlimitedCount = false;
-                                    elem.Upd.StackObjectsCount = rnd.Next(1440);//Major TODO
-                                                                               //PLANS: Separate assort by IDs to apply different random ranges.
-                                                                               // Weight system to roll 'Out of stock often' maybe?
-                                }
-                            }
-                        }
-                    }
+                    AssortScarcity.Apply(trader, _templateTable.Items, _logger, _itemHelper);
                 }
             }
             catch (Exception ex)
             {
+                _logger.Error($"[SVM] Failed to re-roll assort for trader {trader?.Base?.Nickname}: {ex.Message}");
             }
-            return true;
         }
     }
 }

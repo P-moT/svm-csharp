@@ -1,6 +1,7 @@
 ﻿using Greed.Models;
 using Greed.Models.Questing;
 using SPTarkov.Common.Models.Logging;
+using SPTarkov.Server.Core.Helpers.Items;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
@@ -13,7 +14,7 @@ using TraderID = SPTarkov.Server.Core.Models.Enums.Traders;
 
 namespace ServerValueModifier.Sections
 {
-    internal class Traders(ISptLogger<SVM> logger, GlobalTable globals, TemplateTable templateTable, TraderConfig traderConfig, TradersTable traderstable, QuestConfig questConfig, MainClass.MainConfig svmcfg)
+    internal class Traders(ISptLogger<SVM> logger, GlobalTable globals, TemplateTable templateTable, TraderConfig traderConfig, TradersTable traderstable, QuestConfig questConfig, MainClass.MainConfig svmcfg, ItemHelper itemHelper)
     {
 
         public void TradersSection()
@@ -176,7 +177,6 @@ namespace ServerValueModifier.Sections
                     //Find all trader offers, sort them through currencies (RUB,USD,EUR,GPcoin,Lega)
                     //Then Adjust their amounts and restrictions
                     //If not falling under ID - it will count as offer using other items aka default = barter.
-                    Random rnd = new();
                     foreach (var scheme in traderid.Value.Assort.BarterScheme)
                     {
                         var barter = scheme.Value[0][0].Template;
@@ -193,17 +193,12 @@ namespace ServerValueModifier.Sections
                                     if (elem.Id == scheme.Key)//I don't remember why - but this is very important. [mfw coconut.jpg -bushtail]
                                     {
                                         elem.Upd.StackObjectsCount *= svmcfg.Traders.CurrencyOffers;
-                                        if (elem.Upd.StackObjectsCount >= 999999 && elem.Upd.UnlimitedCount is not null && !svmcfg.Traders.RandomizeAssort)
+                                        if (elem.Upd.StackObjectsCount >= 999999 && elem.Upd.UnlimitedCount is not null)
                                         {
                                             elem.Upd.StackObjectsCount = 999999;
                                             elem.Upd.UnlimitedCount = true;
                                         }
-                                        else if (svmcfg.Traders.RandomizeAssort && elem.Upd.UnlimitedCount is not null) //Randomize Assort - first cycle should be done here, the rest dynamically done in TraderOverride router.
-                                        {
-                                            elem.Upd.UnlimitedCount = false;
-                                            elem.Upd.StackObjectsCount = rnd.Next(1440) * svmcfg.Traders.CurrencyOffers;
-                                        }
-                                        else 
+                                        else
                                         {
                                             if (elem.Upd.StackObjectsCount < 1 && svmcfg.Traders.CurrencyOffers > 0)
                                             {
@@ -231,12 +226,7 @@ namespace ServerValueModifier.Sections
                                             elem.Upd.StackObjectsCount = 999999;
                                             elem.Upd.UnlimitedCount = true;
                                         }
-                                        else if (svmcfg.Traders.RandomizeAssort && elem.Upd.UnlimitedCount is not null) //Randomize Assort - first cycle should be done here, the rest dynamically done in TraderOverride router.
-                                        {
-                                            elem.Upd.UnlimitedCount = false;
-                                            elem.Upd.StackObjectsCount = rnd.Next(1440) * svmcfg.Traders.BarterOffers;
-                                        }
-                                        else 
+                                        else
                                         {
                                             if (elem.Upd.StackObjectsCount < 1 && svmcfg.Traders.BarterOffers > 0)
                                             {
@@ -254,6 +244,11 @@ namespace ServerValueModifier.Sections
                                 }
                                 break;
                         }
+                    }
+                    //Scarcity mode - overrides the stock amounts above, restrictions still apply. Restocks are re-rolled in TraderPatch.
+                    if (svmcfg.Traders.RandomizeAssort)
+                    {
+                        AssortScarcity.Apply(traderid.Value, templateTable.Items, logger, itemHelper);
                     }
                 }
             }
